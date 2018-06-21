@@ -4,8 +4,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([create_account/2]).
 
--define(I(F), io:format(F++"~n", [])).
--define(I(F, A), io:format(F++"~n", A)).
+-define(Debug,false).
+-define(I(F),case ?Debug of ture -> io:format(F ++ "~n", []);false -> false end).
+-define(I(F, A), case ?Debug of ture -> io:format(F ++ "~n", A);false -> false end).
 
 % --------------------------------------------------------------------
 % API

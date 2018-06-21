@@ -8,18 +8,19 @@
 %%%-------------------------------------------------------------------
 -module(poke).
 -author("Administrator").
--define(I(F), io:format(F ++ "~n", [])).
--define(I(F, A), io:format(F ++ "~n", A)).
+-define(Debug,false).
+-define(I(F),case ?Debug of ture -> io:format(F ++ "~n", []);false -> false end).
+-define(I(F, A), case ?Debug of ture -> io:format(F ++ "~n", A); false -> false end).
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_card/0, get_card/1]).
+-export([start_link/0, get_card/0, get_card/1, get_level2/1, compare/2, get_level1/1]).
 -export([init_poke/0, test/0]).
 %% gen_server callbacks
 -export([init/1,
-  handle_call/3,
-  handle_cast/2,
-  handle_info/2,
+  handalsole_call/3,
+  handalsole_cast/2,
+  handalsole_info/2,
   terminate/2,
   code_change/3]).
 
@@ -40,6 +41,7 @@
 init_poke() ->
   NotUsed = addpoke([]),
   ?I("init result is ~w", [NotUsed]),
+  random:seed(erlang:now()),
   put(poke_dump,NotUsed),
   start_link().
 %%--------------------------------------------------------------------
@@ -62,7 +64,7 @@ addpoke([]) ->
 
 %% 添加点数
 add_point() ->
-  Ret = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  Ret = [ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,14],
   add_color(Ret,[]).
 
 
@@ -79,7 +81,7 @@ get_card(Number)->
   Got.
 %%取出最后一张牌
 get_card1(1) ->
-  get_card() ;
+  [get_card()] ;
 get_card1(Number)  when Number > 1 ->
     [get_card()|get_card1(Number -1)].
 
@@ -87,6 +89,7 @@ get_card1(Number)  when Number > 1 ->
 get_card() ->
   PokeDump = get(poke_dump),
   ?I("i got ~w", [PokeDump]),
+
   Index = random:uniform(length(PokeDump)),
   GotCard= lists:nth(Index,PokeDump),
   NotUsed1=lists:delete(GotCard,PokeDump),
@@ -97,40 +100,64 @@ get_card() ->
 
 %%compare 比较大小
 compare(CardA,CardB)  ->
-  case    get_level(CardA) > get_level(CardB) of
-    true->  io:format("A Win ");
-    false-> io:format("B Win ")
-  end .
+  get_level1(CardA) > get_level1(CardB) .
 
 
-get_level([{poke_card,_A,Apoint},{poke_card,_B,Bpoint}|{poke_card,_C,Cpoint}])  ->
-     Point = Apoint + Bpoint  + Cpoint ,
-     ?I("point 是 ~w",[Point]),
-     Point.
+get_level1(Card) ->
+  Soreted = lists:keysort(3, Card),
+  {Level,Info} = get_level2(Soreted),
+  ?I("you card is ~w you level is ~w , Info is ~w",[Card,Level,Info]),
+  Level*1000000 + Info.
 
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])  when _Apoint == _Bpoint andalso _Bpoint == _Cpoint
+  ->{6,_Apoint* 10000};
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])  when _A =:= _B andalso _B =:= _C andalso  _Apoint + 2 =:= _Bpoint + 1 andalso _Bpoint + 1=:= _Cpoint
+  ->{5,_Apoint* 10000};
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])  when _A =:= _B andalso _B =:= _C
+  ->{4,_Apoint*1 + _Bpoint * 100 + _Cpoint * 10000};
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])  when _Apoint + 2 =:= _Bpoint + 1 andalso _Bpoint + 1=:= _Cpoint
+  ->{3,_Apoint* 10000};
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])    when _Apoint =:= _Bpoint
+  ->{2,_Cpoint*100 + _Bpoint * 10000 };
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])    when _Apoint =:= _Cpoint
+  ->{2,_Cpoint*100 + _Bpoint * 10000 };
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])    when _Bpoint =:= _Cpoint
+  ->{2,_Cpoint*100 + _Bpoint * 10000 };
+
+get_level2([{poke_card,_A,_Apoint},{poke_card,_B,_Bpoint},{poke_card,_C,_Cpoint}])
+  ->{1,_Apoint*1 + _Bpoint * 100 + _Cpoint * 10000}.
 comparePoint() ->false.
+
+
+
 print_dump() ->
   PokeDump  = get(poke_dump),
   ?I("the dump size is   ~w  ,they are   ~w ", [length(PokeDump),PokeDump]),
   true.
 
-handle_call(get_poke, _From, State) ->
+handalsole_call(get_poke, _From, State) ->
   ?I("deposit money: "),
   {reply, {ok, State}, State};
-handle_call(_Request, _From, State) ->
+handalsole_call(_Request, _From, State) ->
   {reply, ok, State}.
 
 
 
 
-handle_cast(_Request, State) ->
+handalsole_cast(_Request, State) ->
   {noreply, State}.
 
 
-handle_info(check, Money) ->
+handalsole_info(check, Money) ->
   ?I("Current money is: ~w", [Money]),
   {noreply, Money};
-handle_info(_Info, State) ->
+handalsole_info(_Info, State) ->
   {noreply, State}.
 
 
